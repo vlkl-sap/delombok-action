@@ -1,9 +1,21 @@
 #!/bin/bash
 
+set -e
+
 # delombok if necessary
 if git grep -q "^import lombok" '*.java'; then
   # download lombok
   curl https://projectlombok.org/downloads/lombok.jar -o "$GITHUB_WORKSPACE/lombok.jar"
+
+  # Identify class path to use for Lombok
+  CLASSPATH=""
+
+  # For each build system, correctly build out a list of `classpath`'s 
+  if [[ -f "pom.xml" ]]; then
+    # dependency:build-classpath will also restore the dependencies, as well as printing them to the file
+    mvn dependency:build-classpath -Dmdep.outputFile=lombok.classpath
+    CLASSPATH=$(cat lombok.classpath)  
+  fi
 
   function mergeDelombok {
     DIFF=$(diff -Z -w -b -B --unified=200000 --minimal "$GITHUB_WORKSPACE/$1" "$1")
@@ -14,7 +26,15 @@ if git grep -q "^import lombok" '*.java'; then
   }
   export -f mergeDelombok
 
-  java -jar "$GITHUB_WORKSPACE/lombok.jar" delombok -f suppressWarnings:skip -f generated:skip -f generateDelombokComment:skip -n --onlyChanged . -d "$GITHUB_WORKSPACE/delombok"
+  java -jar "$GITHUB_WORKSPACE/lombok.jar" \
+    delombok \
+    -f suppressWarnings:skip \
+    -f generated:skip \
+    -f generateDelombokComment:skip \
+    --classpath="$CLASSPATH" \
+    -n --onlyChanged \
+    . -d "$GITHUB_WORKSPACE/delombok"
+
   pushd "$GITHUB_WORKSPACE/delombok"
   find . -name '*.java' -exec bash -c 'mergeDelombok "{}"' \;
   popd
