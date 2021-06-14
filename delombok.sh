@@ -21,7 +21,10 @@ if git grep -q "^import lombok" '*.java'; then
   fi
 
   function mergeDelombok {
-    diff -Z -w -b -B --unified=200000 --minimal $GITHUB_WORKSPACE/$1 $1 | sed ':a;N;$!ba;s/\n+/ /g' | sed 's/^-.*$//g' | head -n -1 | tail -n +3 > $GITHUB_WORKSPACE/$1
+    DIFF=$(diff -Z -w -b -B --unified=200000 --minimal "$GITHUB_WORKSPACE/$1" "$1")
+    if [ $? -ne 0 ]; then
+     echo "Ran delombok on $1"
+     echo "$DIFF" | sed 's/^ //g' |sed 's/^-.*$//g' | sed -r 's#\+(.*)//(.*)$#\1/*\2/**/#g' |sed ':a;N;$!ba;s/\n+/ /g' | tail -n +3 | grep -v '\ No newline at end of file' > "$GITHUB_WORKSPACE/$1"
   }
   export -f mergeDelombok
 
