@@ -13,7 +13,10 @@ if git grep -q "^import lombok" '*.java'; then
   # For each build system, correctly build out a list of `classpath`'s 
   if [[ -f "pom.xml" ]]; then
     # dependency:build-classpath will also restore the dependencies, as well as printing them to the file
-    mvn dependency:build-classpath -Dmdep.outputFile=lombok.classpath 2> /dev/null
+    mvn dependency:build-classpath -B \
+      -Dmdep.outputFile=lombok.classpath \
+      --no-transfer-progress
+
     CLASSPATH=$(cat lombok.classpath)
 
     echo "Generated classpath :: $CLASSPATH"
